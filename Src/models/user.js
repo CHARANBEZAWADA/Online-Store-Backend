@@ -1,74 +1,74 @@
-const mongoose=require('mongoose')
-const jwt=require('jsonwebtoken')
-const crypto =require('crypto')
-const bcrypt=require('bcryptjs')
-const cookieParser = require('cookie-parser')
+const mongoose = require("mongoose");
+const validator = require("validator");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, "Please provide a name"],
+    maxlength: [40, "Name should be under 40 characters"],
+  },
+  email: {
+    type: String,
+    required: [true, "Please provide an email"],
+    validate: [validator.isEmail, "Please enter email in correct format"],
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: [true, "Please provide a password"],
+    minlength: [6, "Password should be at least 6 characters"],
+    select: false,
+  },
+  role: {
+    type: String,
+    default: "user",
+  },
+  forgotPasswordToken: String,
+  forgotPasswordExpiry: Date,
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-const userSchema=new mongoose.Schema({
-    name:{
-        type:String,
-        require:true
-    },
-    email:{
-        type:String,
-        require:true
-    },
-    password:{
-        type:String,
-        require:true,
-        Select:false
-    },
-    role:{
-        type:String,
-        default:'user',
-    },
-    forgotpasswordToken:String,
-    
-    forgotpasswordExpiry:Date,
-    createdAt:{
-        type:Date,
-        default:Date.now()
-    },
-})
-userSchema.pre('save',async function(next){
-    if(!this.isModified('password')){
+// Encrypt password before save - HOOKS
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     return next();
-    }
-    this.password=bcrypt.hash(this.password,10)
-})
+  }
+  this.password = await bcrypt.hash(this.password, 10);
+});
 
-userSchema.methods.isvalidatedPassword=async function(usersendPassword){
-    return await bcrypt.compare(this.password,usersendPassword)
-},
-
-userSchema.methods.generateJwtToken = function() {
-    return jwt.sign(
-        { id: this._id },
-        process.env.JWT_SECRET, 
-        { expiresIn: process.env.EXPIRES_IN }
-    );
+// Validate the password with passed on user password
+userSchema.methods.isValidatedPassword = async function (usersendPassword) {
+  return await bcrypt.compare(usersendPassword, this.password);
 };
 
-userSchema.methods.getToken=async function() {
-    // Generating a random long bites
-    const forgotToken = crypto.randomBytes(20).toString('hex');
-    
-    // Getting a hash - make sure to get a hash on
-    this.forgotpasswordToken = crypto.createHash('sha256').update(forgotToken).digest('hex');
-
-    // Time of token
-    this.forgotpasswordExpiry = Date.now() + 20 * 60 * 1000;
-
-    // Returning the generated token
-    return forgotToken;
-};
-userSchema.methods.generateForgotPasswordToken = async function() {
-    const token = crypto.randomBytes(20).toString('hex');
-    this.forgotpasswordToken = token;
-    return token;
+// Create and return jwt token
+userSchema.methods.getJwtToken = function () {
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.EXPIRES_IN,
+  });
 };
 
+// Generate forgot password token (string)
+userSchema.methods.generateForgotPasswordToken = function () {
+  // Generate a long and random string
+  const forgotToken = crypto.randomBytes(20).toString("hex");
 
+  // Getting a hash - make sure to get a hash on backend
+  this.forgotPasswordToken = crypto
+    .createHash("sha256")
+    .update(forgotToken)
+    .digest("hex");
 
-module.exports=mongoose.model('User',userSchema)
+  // Time of token
+  this.forgotPasswordExpiry = Date.now() + 20 * 60 * 1000; // 20 minutes
+
+  return forgotToken;
+};
+
+module.exports = mongoose.model("User", userSchema);

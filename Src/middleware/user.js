@@ -1,53 +1,32 @@
-const { Error } = require('mongoose').Error;
-const User = require('../models/user');
-const cookieParser = require('cookie-parser');
-const Jwt = require('jsonwebtoken');
-const crypto=require('crypto')
-const token=require('../utils/token')
+const User = require("../models/user");
+const jwt = require("jsonwebtoken");
 
-exports.loggedIn = async (req, res, next) => {
-    const token = req.headers.authorization && req.headers.authorization.replace("Bearer ", "")
+exports.isLoggedIn = (async (req, res, next) => {
+  //const token = req.cookies.token || req.header("Authorization").replace("Bearer ", "");
+  let token = req.cookies.token;
 
-    if (!token) {
-        // return next(new Error('login first to access this page'));
-        const error=new Error("hiii");
-        return next(error)
+  // if token not found in cookies, check if header contains Auth field
+  if (!token && req.header("Authorization")) {
+    token = req.header("Authorization").replace("Bearer ", "");
+  }
+
+  if (!token) {
+    return next(new Error("Login first to access this page", 401));
+  }
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+  req.user = await User.findById(decoded.id);
+
+  next();
+});
+
+exports.customRole = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(new Error("You are not allowed for this resouce", 403));
     }
-
-    try {
-        const decoded = Jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.id);
-        next();
-    } catch (error) {
-        next(error); // Forward the error to the error handler middleware
-    }
+    console.log(req.user.role);
+    next();
+  };
 };
-
-// exports.loggedIn = (req, res, next) => {
-//     // Check if token is present in cookies or authorization header
-//     const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.replace("Bearer ", ""));
-
-//     if (!token) {
-//         return res.status(401).json({ message: "Unauthorized: Missing token" });
-//     }
-
-//     // Here, you can proceed with your authentication logic using the token
-//     // For example, verify the token and attach user information to the request object
-
-//     next(); // Call next middleware
-// };
-// exports.loggedIn = (req, res, next) => {
-//     console.log("hiiii");
-//     // Check if token is present in cookies or authorization header
-//     const token =  (req.headers.authorization && req.headers.authorization.replace("Bearer ", ""));
-//     console.log(token);
-
-//     if (!token) {
-//         return res.status(401).json({ message: "Unauthorized: Missing token" });
-//     }
-// console.log(req.cookies,"cookied")
-//     // Here, you can proceed with your authentication logic using the token
-//     // For example, verify the token and attach user information to the request object
-
-//     next(); // Call next middleware
-// };

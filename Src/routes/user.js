@@ -1,21 +1,36 @@
-const express=require('express')
-const router=express.Router();
+const express = require('express');
+const router = express.Router();
 
+const {
+  signup,
+  login,
+  logout,
+  forgotPassword,
+  passwordReset,
+  getLoggedInUserDetails,
+  changePassword,
+  updateUserDetails,
+  adminAllUser,
+  admingetOneUser,
+  adminUpdateOneUserDetails,
+  adminDeleteOneUser,
+  managerAllUser,
+} = require('../controllers/user');
 
-const {signup,login,logout,forgotPassword,PasswordReset,getLoggedInDetails,changePassword,updateuserdetails,adminAllUsers}=require('../controllers/user');
-const { loggedIn } = require('../middleware/user');
+const { isLoggedIn } = require('../middleware/user');
 
+router.post('/signup', signup);
+router.post('/login', login);
+router.get('/logout', logout);
+router.post('/forgotPassword', forgotPassword);
+router.post('/password/reset/:token', passwordReset);
+router.get('/userdashboard', isLoggedIn, getLoggedInUserDetails);
+router.post('/password/update', isLoggedIn, changePassword);
+router.post('/userdashboard/update', isLoggedIn, updateUserDetails);
+router.get('/admin/users', isLoggedIn, adminAllUser);
+router.get('/admin/user/:id', isLoggedIn, admingetOneUser);
+router.put('/admin/user/:id', isLoggedIn, adminUpdateOneUserDetails);
+router.delete('/admin/user/:id', isLoggedIn, adminDeleteOneUser);
+router.get('/manager/users', isLoggedIn, managerAllUser);
 
-
-
-router.post('/signup',signup)
-router.get('/login',login)
-router.get('/logout',logout)
-router.get('/forgotPassword',forgotPassword)
-router.get('/password/reset/:token',PasswordReset)
-router.get('/userdashboard',loggedIn,getLoggedInDetails)
-router.get('/password/update',loggedIn,changePassword)
-router.get('/userdashboard/update',loggedIn,updateuserdetails)
-router.get('/admin/users',loggedIn,adminAllUsers)
-
-module.exports=router;
+module.exports = router;
